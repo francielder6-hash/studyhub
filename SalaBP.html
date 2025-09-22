@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+<!-- define a largura para telas diversas. -->
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Chat de Estudos</title>
+ <style>
+    h1 { 
+        background-color: #004080; 
+        text-align: center; /* Centraliza a imagem horizontalmente */
+        padding: 10px; /* Adiciona espaço em volta da imagem */
+    }
+nav a {
+    color: white;                   /* Links brancos */
+    text-decoration: none;
+    padding: 10px 5px;
+    font-weight: bold;
+}
+</style>
+  <!-- SDK compat (v8 style) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore-compat.js"></script>
+</head>
+<body>
+<header>
+    
+ 
+  <h1><img src="imagens\LogOO.png" alt="Logo do site" style="width: 150px; height: auto;">
+<nav>
+    <a href="index.html">Início</a>
+    <a href="testp2.html">Cursos</a>
+    <a href="SalaBP.html">Bate-papo</a>
+  </nav>
+  </header></h1>
+
+  <p>Sala de Bate Papo</p>
+  <input id="name" placeholder="Seu nome"/>
+  <input id="room" placeholder="Sala (ex.: Física II)"/>
+  <button id="join">Entrar</button>
+
+  <h3 id="roomTitle">Sala: —</h3>
+  <div id="messages" style="height:200px; overflow:auto; border:1px solid #ccc;"></div>
+  <input id="msg" placeholder="Mensagem..." />
+  <button id="send">Enviar mensagem</button>
+  <a href="https://mail.google.com/mail/?view=cm&fs=1&to=colega@exemplo.com&su=Arquivo do Chat&body=Olá, estou te enviando um arquivo.">
+  <button>Enviar um arquivo.</button>
+</a>
+
+  <script>
+    // 🔑 Config do Firebase (o que você pegou no console)
+    const firebaseConfig = {
+      apiKey: "AIzaSyDcyq2dSHWwOq81EKMeDh8Tcc8sqhAoHsE",
+      authDomain: "chat-estudos-443f5.firebaseapp.com",
+      projectId: "chat-estudos-443f5",
+      storageBucket: "chat-estudos-443f5.firebasestorage.app",
+      messagingSenderId: "777611321705",
+      appId: "1:777611321705:web:b169c5e667ab83f1d35df8",
+      measurementId: "G-CDHH8L9NLL"
+    };
+
+    // Inicializa Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    const el = id => document.getElementById(id);
+    const nameInput = el('name');
+    const roomInput = el('room');
+    const joinBtn = el('join');
+    const title = el('roomTitle');
+    const messagesDiv = el('messages');
+    const msgInput = el('msg');
+    const sendBtn = el('send');
+
+    let currentRoom = null;
+    let displayName = null;
+    let unsub = null;
+
+    function addMessage(m) {
+      const div = document.createElement('div');
+      const t = m.ts?.toDate ? m.ts.toDate() : new Date();
+      div.innerHTML = `<strong>${m.from || 'anon'}</strong> 
+        <small>${t.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</small><br>${m.text}`;
+      messagesDiv.appendChild(div);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    joinBtn.onclick = async () => {
+      displayName = nameInput.value.trim() || 'Aluno';
+      currentRoom = roomInput.value.trim() || 'geral';
+      title.textContent = `Sala: ${currentRoom}`;
+
+      if (!auth.currentUser) await auth.signInAnonymously();
+
+      if (unsub) unsub();
+
+      unsub = db.collection('rooms').doc(currentRoom).collection('messages')
+        .orderBy('ts').limitToLast(200)
+        .onSnapshot((snap) => {
+          messagesDiv.innerHTML = '';
+          snap.forEach(doc => addMessage(doc.data()));
+        });
+    };
+
+    sendBtn.onclick = async () => {
+      const text = msgInput.value.trim();
+      if (!text || !currentRoom) return;
+      await db.collection('rooms').doc(currentRoom).collection('messages').add({
+        from: displayName,
+        text,
+        ts: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      msgInput.value = '';
+      msgInput.focus();
+    };
+
+    msgInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendBtn.click(); });
+  </script>
+</body>
+</html>
